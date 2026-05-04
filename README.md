@@ -42,8 +42,22 @@ Built with **NestJS (backend)** and **React (frontend)**, demonstrating real-wor
 
 ---
 
-## ⚙️ Project Setup
+## ⚙️ Setup Instructions
 
 ### 1. Install dependencies
-```bash
 npm install
+
+### 2. Run backend (NestJS)
+npm run start:dev
+
+### 3. Run frontend (React)
+cd frontend
+npm install
+npm run dev
+
+---
+
+## 👨‍💻 Author
+
+Carol Manthosa  
+GitHub: https://github.com/carolmanthosa
