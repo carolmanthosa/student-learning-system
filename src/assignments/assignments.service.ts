@@ -2,8 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Assignment } from './entities/assignment.entity';
-import { Student } from '../students/entities/student.entity';
-import { Course } from '../courses/entities/course.entity'; // ✅ added
+import { Course } from '../courses/entities/course.entity';
 import { CreateAssignmentDto } from './dto/create-assignment.dto';
 import { UpdateAssignmentDto } from './dto/update-assignment.dto';
 
@@ -13,54 +12,54 @@ export class AssignmentsService {
     @InjectRepository(Assignment)
     private assignmentRepo: Repository<Assignment>,
 
-    @InjectRepository(Student)
-    private studentRepo: Repository<Student>,
-
-    @InjectRepository(Course) // ✅ added
+    @InjectRepository(Course)
     private courseRepo: Repository<Course>,
   ) {}
 
-  async create(data: CreateAssignmentDto) {
-    const student = await this.studentRepo.findOneBy({ id: data.studentId });
-    if (!student) throw new NotFoundException(`Student #${data.studentId} not found`);
-
-    const course = await this.courseRepo.findOneBy({ id: data.courseId }); // ✅ added
-    if (!course) throw new NotFoundException(`Course #${data.courseId} not found`); // ✅ added
+  async create(data: CreateAssignmentDto): Promise<Assignment> {
+    const course = await this.courseRepo.findOneBy({ id: data.courseId });
+    if (!course) throw new NotFoundException(`Course #${data.courseId} not found`);
 
     const assignment = this.assignmentRepo.create({
       title: data.title,
-      dueDate: new Date(data.dueDate), // ✅ description → dueDate
-      student,
-      course, // ✅ added
+      dueDate: new Date(data.dueDate),
+      course,
     });
 
     return this.assignmentRepo.save(assignment);
   }
 
-  findAll() {
-    return this.assignmentRepo.find({ relations: ['student', 'course'] }); // ✅ add course
+  async findAll(): Promise<Assignment[]> {
+    return this.assignmentRepo.find({ relations: ['course'] });
   }
 
-  async findOne(id: number) {
+  async findOne(id: string): Promise<Assignment> {
     const assignment = await this.assignmentRepo.findOne({
       where: { id },
-      relations: ['student', 'course'], // ✅ add course
+      relations: ['course'],
     });
     if (!assignment) throw new NotFoundException(`Assignment #${id} not found`);
     return assignment;
   }
 
-  async update(id: number, data: UpdateAssignmentDto) {
-    await this.findOne(id);
-    await this.assignmentRepo.update(id, {
-      title: data.title,
-      dueDate: data.dueDate ? new Date(data.dueDate) : undefined, // ✅ description → dueDate
-    });
-    return this.findOne(id);
+  async update(id: string, data: UpdateAssignmentDto): Promise<Assignment> {
+    const assignment = await this.findOne(id);
+
+    if (data.title) assignment.title = data.title;
+    if (data.dueDate) assignment.dueDate = new Date(data.dueDate);
+
+    if (data.courseId) {
+      const course = await this.courseRepo.findOneBy({ id: data.courseId });
+      if (!course) throw new NotFoundException(`Course #${data.courseId} not found`);
+      assignment.course = course;
+    }
+
+    return this.assignmentRepo.save(assignment);
   }
 
-  async remove(id: number) {
+  async remove(id: string): Promise<{ message: string }> {
     await this.findOne(id);
-    return this.assignmentRepo.delete(id);
+    await this.assignmentRepo.delete(id);
+    return { message: `Assignment #${id} deleted successfully` };
   }
 }

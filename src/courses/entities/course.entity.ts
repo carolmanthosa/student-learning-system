@@ -1,21 +1,33 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, OneToMany } from 'typeorm';
-import { Student } from '../../students/entities/student.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+} from 'typeorm';
 import { Assignment } from '../../assignments/entities/assignment.entity';
+import { Enrollment } from '../../enrollments/entities/enrollment.entity';
 
 @Entity()
 export class Course {
-  @PrimaryGeneratedColumn()
-  id!: number;
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
   @Column()
   title!: string;
 
-  @Column()
+  @Column({ unique: true })
   code!: string;
 
-  @ManyToMany(() => Student, (student) => student.courses)
-  students!: Student[];
-
-  @OneToMany(() => Assignment, (assignment) => assignment.course)
+  // One-to-Many: Course → Assignments
+  @OneToMany(() => Assignment, (assignment) => assignment.course, {
+    cascade: true,
+    eager: true,
+  })
   assignments!: Assignment[];
+
+  // Many-to-Many via Enrollment bridge table
+  @OneToMany(() => Enrollment, (enrollment) => enrollment.course, {
+    eager: true,
+  })
+  enrollments!: Enrollment[];
 }

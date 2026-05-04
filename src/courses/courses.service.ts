@@ -12,31 +12,35 @@ export class CoursesService {
     private courseRepo: Repository<Course>,
   ) {}
 
-  create(data: CreateCourseDto) {
-    return this.courseRepo.save(data);
+  async create(data: CreateCourseDto): Promise<Course> {
+    const course = this.courseRepo.create(data);
+    return this.courseRepo.save(course);
   }
 
-  findAll() {
-    return this.courseRepo.find({ relations: ['students', 'assignments'] }); // ✅ add assignments
+  async findAll(): Promise<Course[]> {
+    return this.courseRepo.find({
+      relations: ['assignments', 'enrollments', 'enrollments.student'],
+    });
   }
 
-  async findOne(id: number) {
+  async findOne(id: string): Promise<Course> {
     const course = await this.courseRepo.findOne({
       where: { id },
-      relations: ['students', 'assignments'], // ✅ add assignments
+      relations: ['assignments', 'enrollments', 'enrollments.student'],
     });
     if (!course) throw new NotFoundException(`Course #${id} not found`);
     return course;
   }
 
-  async update(id: number, data: UpdateCourseDto) {
+  async update(id: string, data: UpdateCourseDto): Promise<Course> {
     await this.findOne(id);
     await this.courseRepo.update(id, data);
     return this.findOne(id);
   }
 
-  async remove(id: number) {
+  async remove(id: string): Promise<{ message: string }> {
     await this.findOne(id);
-    return this.courseRepo.delete(id);
+    await this.courseRepo.delete(id);
+    return { message: `Course #${id} deleted successfully` };
   }
 }

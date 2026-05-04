@@ -7,5 +7,9 @@ export class UpdateAssignmentDto {
 
   @IsDateString()
   @IsOptional()
-  dueDate?: string; // ✅ description → dueDate
+  dueDate?: string;
+
+  @IsString()
+  @IsOptional()
+  courseId?: string;
 }

@@ -1,15 +1,15 @@
-import { IsString, IsNotEmpty, IsNumber, IsUrl, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateProfileDto {
   @IsString()
   @IsNotEmpty()
   bio!: string;
 
-  @IsUrl()
+  @IsString()
   @IsOptional()
   avatarUrl?: string;
 
-  @IsNumber()
+  @IsString()
   @IsNotEmpty()
-  studentId!: number;
+  studentId!: string;
 }

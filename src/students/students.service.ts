@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Student } from './entities/student.entity';
 import { Course } from '../courses/entities/course.entity';
+import { Enrollment } from '../enrollments/entities/enrollment.entity';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 
@@ -13,6 +14,8 @@ export class StudentsService {
     private studentRepo: Repository<Student>,
     @InjectRepository(Course)
     private courseRepo: Repository<Course>,
+    @InjectRepository(Enrollment)
+    private enrollmentRepo: Repository<Enrollment>,
   ) {}
 
   create(data: CreateStudentDto) {
@@ -21,59 +24,68 @@ export class StudentsService {
   }
 
   findAll() {
-    return this.studentRepo.find({ relations: ['profile'] }); // ✅ include profile
+    return this.studentRepo.find({
+      relations: ['profile', 'enrollments', 'enrollments.course', 'enrollments.course.assignments'],
+    });
   }
 
-  async findOne(id: number) {
+  async findOne(id: string) {
     const student = await this.studentRepo.findOne({
       where: { id },
-      relations: ['profile'], // ✅ include profile
+      relations: ['profile', 'enrollments', 'enrollments.course', 'enrollments.course.assignments'],
     });
     if (!student) throw new NotFoundException(`Student #${id} not found`);
     return student;
   }
 
-  async update(id: number, data: UpdateStudentDto) {
+  async update(id: string, data: UpdateStudentDto) {
     await this.findOne(id);
     await this.studentRepo.update(id, data);
     return this.findOne(id);
   }
 
-  async remove(id: number) {
-    await this.findOne(id);
+  async remove(id: string) {
+    const student = await this.studentRepo.findOne({
+      where: { id },
+      relations: ['enrollments'],
+    });
+    if (!student) throw new NotFoundException(`Student #${id} not found`);
+    // Delete enrollments first
+    await this.enrollmentRepo.delete({ student: { id } });
     return this.studentRepo.delete(id);
   }
 
-  async getCourses(studentId: number) {
-    const student = await this.studentRepo.findOne({
-      where: { id: studentId },
-      relations: ['courses'],
+  async getCourses(studentId: string) {
+    const enrollments = await this.enrollmentRepo.find({
+      where: { student: { id: studentId } },
+      relations: ['course'],
     });
-    if (!student) throw new NotFoundException(`Student #${studentId} not found`);
-    return student.courses;
+    return enrollments.map(e => e.course);
   }
 
-  async enroll(studentId: number, courseId: number) {
-    const student = await this.studentRepo.findOne({
-      where: { id: studentId },
-      relations: ['courses'],
-    });
+  async enroll(studentId: string, courseId: string) {
+    const student = await this.studentRepo.findOneBy({ id: studentId });
     if (!student) throw new NotFoundException(`Student #${studentId} not found`);
 
     const course = await this.courseRepo.findOneBy({ id: courseId });
     if (!course) throw new NotFoundException(`Course #${courseId} not found`);
 
-    student.courses = [...(student.courses ?? []), course];
-    return this.studentRepo.save(student);
+    const existing = await this.enrollmentRepo.findOne({
+      where: { student: { id: studentId }, course: { id: courseId } },
+    });
+    if (existing) return this.findOne(studentId);
+
+    const enrollment = this.enrollmentRepo.create({ student, course });
+    await this.enrollmentRepo.save(enrollment);
+    return this.findOne(studentId);
   }
 
-  // ✅ added
-  async getAssignments(studentId: number) {
-    const student = await this.studentRepo.findOne({
-      where: { id: studentId },
-      relations: ['assignments', 'assignments.course'],
+  async unenroll(studentId: string, courseId: string) {
+    const enrollment = await this.enrollmentRepo.findOne({
+      where: { student: { id: studentId }, course: { id: courseId } },
     });
-    if (!student) throw new NotFoundException(`Student #${studentId} not found`);
-    return student.assignments;
+    if (!enrollment) throw new NotFoundException('Enrollment not found');
+    await this.enrollmentRepo.remove(enrollment);
+    return this.findOne(studentId);
   }
 }

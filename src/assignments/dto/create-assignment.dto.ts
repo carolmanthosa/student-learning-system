@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsDateString } from 'class-validator';
+import { IsString, IsNotEmpty, IsDateString } from 'class-validator';
 
 export class CreateAssignmentDto {
   @IsString()
@@ -7,13 +7,9 @@ export class CreateAssignmentDto {
 
   @IsDateString()
   @IsNotEmpty()
-  dueDate!: string; // ✅ description → dueDate
+  dueDate!: string;
 
-  @IsNumber()
+  @IsString()
   @IsNotEmpty()
-  studentId!: number;
-
-  @IsNumber()
-  @IsNotEmpty()
-  courseId!: number; // ✅ added
+  courseId!: string;
 }

@@ -25,15 +25,24 @@ export class StudentsController {
     return this.studentsService.findAll();
   }
 
-  
-  @Get(':id/courses')
-  getCourses(@Param('id') id: string) {
-    return this.studentsService.getCourses(+id);
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.studentsService.findOne(id);
   }
 
-  @Get(':id/assignments') // ✅ added
-  getAssignments(@Param('id') id: string) {
-    return this.studentsService.getAssignments(+id);
+  @Put(':id')
+  update(@Param('id') id: string, @Body() body: UpdateStudentDto) {
+    return this.studentsService.update(id, body);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.studentsService.remove(id);
+  }
+
+  @Get(':id/courses')
+  getCourses(@Param('id') id: string) {
+    return this.studentsService.getCourses(id);
   }
 
   @Post(':id/enroll/:courseId')
@@ -41,21 +50,14 @@ export class StudentsController {
     @Param('id') id: string,
     @Param('courseId') courseId: string,
   ) {
-    return this.studentsService.enroll(+id, +courseId);
+    return this.studentsService.enroll(id, courseId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.studentsService.findOne(+id);
-  }
-
-  @Put(':id')
-  update(@Param('id') id: string, @Body() body: UpdateStudentDto) {
-    return this.studentsService.update(+id, body);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.studentsService.remove(+id);
+  @Delete(':id/unenroll/:courseId')
+  unenroll(
+    @Param('id') id: string,
+    @Param('courseId') courseId: string,
+  ) {
+    return this.studentsService.unenroll(id, courseId);
   }
 }
