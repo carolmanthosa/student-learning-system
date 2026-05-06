@@ -3,13 +3,17 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToMany,
-} from 'typeorm';
-import { Assignment } from '../../assignments/entities/assignment.entity';
-import { Enrollment } from '../../enrollments/entities/enrollment.entity';
+  CreateDateColumn,
+  UpdateDateColumn,
+  DeleteDateColumn,
+} from "typeorm";
+
+import { Assignment } from "../../assignments/entities/assignment.entity";
+import { Enrollment } from "../../enrollments/entities/enrollment.entity";
 
 @Entity()
 export class Course {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id!: string;
 
   @Column()
@@ -25,9 +29,21 @@ export class Course {
   })
   assignments!: Assignment[];
 
-  // Many-to-Many via Enrollment bridge table
+  // One-to-Many: Course → Enrollments
   @OneToMany(() => Enrollment, (enrollment) => enrollment.course, {
     eager: true,
   })
   enrollments!: Enrollment[];
+
+  //  Created timestamp
+  @CreateDateColumn()
+  createdAt!: Date;
+
+  //  Updated timestamp
+  @UpdateDateColumn()
+  updatedAt!: Date;
+
+  // Soft delete support
+  @DeleteDateColumn()
+  deletedAt!: Date;
 }

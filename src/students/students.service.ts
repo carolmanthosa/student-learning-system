@@ -7,6 +7,7 @@ import { Enrollment } from '../enrollments/entities/enrollment.entity';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 
+
 @Injectable()
 export class StudentsService {
   constructor(
@@ -17,7 +18,13 @@ export class StudentsService {
     @InjectRepository(Enrollment)
     private enrollmentRepo: Repository<Enrollment>,
   ) {}
-
+  
+  async findByEmail(email: string) {
+    return this.studentRepo.findOne({
+      where: { email },
+    });
+  }
+ 
   create(data: CreateStudentDto) {
     const student = this.studentRepo.create(data);
     return this.studentRepo.save(student);
@@ -44,16 +51,19 @@ export class StudentsService {
     return this.findOne(id);
   }
 
-  async remove(id: string) {
-    const student = await this.studentRepo.findOne({
-      where: { id },
-      relations: ['enrollments'],
-    });
-    if (!student) throw new NotFoundException(`Student #${id} not found`);
-    // Delete enrollments first
-    await this.enrollmentRepo.delete({ student: { id } });
-    return this.studentRepo.delete(id);
-  }
+ async remove(id: string) {
+  const student = await this.studentRepo.findOne({
+    where: { id },
+    relations: ['enrollments'],
+  });
+  if (!student) throw new NotFoundException(`Student #${id} not found`);
+  
+  // Soft delete enrollments first
+  await this.enrollmentRepo.softDelete({ student: { id } });
+  
+  // Soft delete student (sets deletedAt instead of removing)
+  return this.studentRepo.softDelete(id);
+}
 
   async getCourses(studentId: string) {
     const enrollments = await this.enrollmentRepo.find({
