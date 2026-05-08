@@ -76,35 +76,38 @@ export default function StudentsPage() {
       flash('Failed to load courses', 'error')
     }
   }
-
-  const fetchStudent = async (id: string) => {
-    setLoading(true)
-    try {
-      const [s, enrolledCourses] = await Promise.all([
-        api.get(`/students/${id}`),
-        api.get(`/students/${id}/courses`),
-      ])
-      const coursesWithAssignments = await Promise.all(
-        enrolledCourses.data.map(async (c: Course) => {
-          const courseDetail = await api.get(`/courses/${c.id}`)
-          return courseDetail.data
+const fetchStudent = async (id: string) => {
+  setLoading(true)
+  try {
+    const res = await api.get(`/students/${id}`)
+    const student = res.data
+    const courses = await Promise.all(
+      (student.enrollments || [])
+        .filter((e: any) => !e.deletedAt)
+        .map(async (e: any) => {
+          try {
+            const courseDetail = await api.get(`/courses/${e.course_id}`)
+            return courseDetail.data
+          } catch {
+            return null
+          }
         })
-      )
-      const full = { ...s.data, courses: coursesWithAssignments }
-      setSelected(full)
-      setName(full.name)
-      setEmail(full.email)
-      setRole(full.role || 'student')
-      setBio(full.profile?.bio || '')
-      setAvatarUrl(full.profile?.avatarUrl || '')
-      setEditMode(false)
-      return full
-    } catch {
-      flash('Failed to load student details', 'error')
-    } finally {
-      setLoading(false)
-    }
+    )
+    const full = { ...student, courses: courses.filter(Boolean) }
+    setSelected(full)
+    setName(full.name)
+    setEmail(full.email)
+    setRole(full.role || 'student')
+    setBio(full.profile?.bio || '')
+    setAvatarUrl(full.profile?.avatarUrl || '')
+    setEditMode(false)
+    return full
+  } catch {
+    flash('Failed to load student details', 'error')
+  } finally {
+    setLoading(false)
   }
+}
 
   useEffect(() => { fetchStudents(); fetchCourses() }, [])
 

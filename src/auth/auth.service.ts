@@ -1,36 +1,54 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { StudentsService } from '../students/students.service';
+import { Student } from '../students/entities/student.entity';
+import { Role } from './roles.enum';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private studentsService: StudentsService,
+    @InjectRepository(Student)
+    private studentRepo: Repository<Student>,
     private jwtService: JwtService,
   ) {}
 
+  // ── Register (students only) ───────────────────────────────
+  async register(name: string, email: string, password: string) {
+    const existing = await this.studentRepo.findOne({ where: { email } });
+    if (existing) throw new ConflictException('Email already in use');
+
+    const hashed = await bcrypt.hash(password, 10);
+    const student = this.studentRepo.create({
+      name,
+      email,
+      password: hashed,
+      role: Role.STUDENT,
+    });
+
+    await this.studentRepo.save(student);
+    return { message: 'Account created successfully' };
+  }
+
+  // ── Login ──────────────────────────────────────────────────
   async login(email: string, password: string) {
-    const student = await this.studentsService.findOne(email);
+    const user = await this.studentRepo.findOne({ where: { email } });
+    if (!user) throw new NotFoundException('User not found');
 
-    if (!student) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) throw new UnauthorizedException('Invalid credentials');
 
-    const isMatch = await bcrypt.compare(password, student.password);
-
-    if (!isMatch) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const payload = {
-      sub: student.id,
-      email: student.email,
-      role: student.role,
-    };
+    const payload = { sub: user.id, email: user.email, role: user.role };
 
     return {
-      accessToken: this.jwtService.sign(payload),
+      access_token: this.jwtService.sign(payload),
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
     };
   }
 }

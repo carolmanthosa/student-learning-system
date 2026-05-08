@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import api from '../api/api'
+import authService from '../app/auth/services/authService'
 
 interface Assignment {
   id: string
@@ -34,6 +35,8 @@ export default function CoursesPage() {
   const [message, setMessage] = useState('')
   const [msgType, setMsgType] = useState<'success' | 'error'>('success')
 
+  const isAdmin = authService.isAdmin()
+
   const fetchCourses = () => api.get('/courses').then(r => setCourses(r.data))
 
   const fetchCourse = async (id: string) => {
@@ -58,7 +61,7 @@ export default function CoursesPage() {
     if (!title || !code) return flash('Title and code are required', 'error')
     try {
       const res = await api.post('/courses', { title, code })
-      flash('Course created! Now add assignments below.')
+      flash('Course created!')
       setTitle(''); setCode('')
       setShowAdd(false)
       await fetchCourses()
@@ -82,7 +85,7 @@ export default function CoursesPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this course? This will also delete all its assignments.')) return
+    if (!confirm('Delete this course?')) return
     try {
       await api.delete(`/courses/${id}`)
       setSelected(null)
@@ -117,22 +120,15 @@ export default function CoursesPage() {
     try {
       await api.delete(`/assignments/${assignmentId}`)
       flash('Assignment deleted')
-      if (selected) {
-        fetchCourse(selected.id)
-        fetchCourses()
-      }
+      if (selected) { fetchCourse(selected.id); fetchCourses() }
     } catch (e: any) {
       flash('Error deleting assignment', 'error')
     }
   }
 
   const inputStyle = {
-    width: '100%',
-    padding: '8px 10px',
-    borderRadius: 6,
-    border: '1px solid #d1d5db',
-    fontSize: 14,
-    marginBottom: 8,
+    width: '100%', padding: '8px 10px', borderRadius: 6,
+    border: '1px solid #d1d5db', fontSize: 14, marginBottom: 8,
     boxSizing: 'border-box' as const,
   }
 
@@ -143,16 +139,19 @@ export default function CoursesPage() {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <span style={{ fontWeight: 600, fontSize: 15 }}>Courses</span>
-          <button
-            onClick={() => { setShowAdd(true); setSelected(null); setTitle(''); setCode('') }}
-            style={{ padding: '4px 12px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
-            + Add
-          </button>
+          {/* ADMIN ONLY — Add Course button */}
+          {isAdmin && (
+            <button
+              onClick={() => { setShowAdd(true); setSelected(null); setTitle(''); setCode('') }}
+              style={{ padding: '4px 12px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
+              + Add
+            </button>
+          )}
         </div>
 
         {courses.length === 0 && (
           <div style={{ fontSize: 13, color: '#6b7280', textAlign: 'center', padding: 20 }}>
-            No courses yet. Click + Add to create one.
+            No courses yet.
           </div>
         )}
 
@@ -165,10 +164,9 @@ export default function CoursesPage() {
               border: selected?.id === c.id ? '1px solid #a5b4fc' : '0.5px solid #e5e7eb',
             }}>
             <div style={{
-              width: 38, height: 38, borderRadius: 8,
-              background: '#4f46e5', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', fontWeight: 600, fontSize: 10,
-              color: 'white', flexShrink: 0
+              width: 38, height: 38, borderRadius: 8, background: '#4f46e5',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontWeight: 600, fontSize: 10, color: 'white', flexShrink: 0
             }}>
               {c.code}
             </div>
@@ -195,12 +193,12 @@ export default function CoursesPage() {
           </div>
         )}
 
-        {/* Add Course Form */}
-        {showAdd && (
+        {/* Add Course Form — ADMIN ONLY */}
+        {showAdd && isAdmin && (
           <div style={{ background: 'white', padding: 24, borderRadius: 10, border: '0.5px solid #e5e7eb' }}>
             <h3 style={{ marginBottom: 4, fontSize: 16 }}>New Course</h3>
             <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
-              After creating, you can immediately add assignments to this course.
+              After creating, you can immediately add assignments.
             </p>
             <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 4 }}>Course Title *</label>
             <input placeholder="e.g. Database Systems" value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} />
@@ -226,9 +224,9 @@ export default function CoursesPage() {
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
               <div style={{
-                width: 48, height: 48, borderRadius: 8,
-                background: '#4f46e5', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', fontWeight: 600, fontSize: 12, color: 'white'
+                width: 48, height: 48, borderRadius: 8, background: '#4f46e5',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 600, fontSize: 12, color: 'white'
               }}>
                 {selected.code}
               </div>
@@ -236,25 +234,29 @@ export default function CoursesPage() {
                 <div style={{ fontSize: 17, fontWeight: 600 }}>{selected.title}</div>
                 <div style={{ fontSize: 13, color: '#6b7280' }}>Code: {selected.code}</div>
               </div>
-              <button
-                onClick={() => setEditMode(!editMode)}
-                style={{
-                  padding: '6px 14px',
-                  background: editMode ? '#e5e7eb' : '#4f46e5',
-                  color: editMode ? '#374151' : 'white',
-                  border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontWeight: 500
-                }}>
-                {editMode ? 'Cancel' : '✏️ Edit'}
-              </button>
-              <button
-                onClick={() => handleDelete(selected.id)}
-                style={{ padding: '6px 14px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
-                🗑 Delete
-              </button>
+
+              {/* ADMIN ONLY — Edit and Delete buttons */}
+              {isAdmin && (
+                <>
+                  <button onClick={() => setEditMode(!editMode)}
+                    style={{
+                      padding: '6px 14px',
+                      background: editMode ? '#e5e7eb' : '#4f46e5',
+                      color: editMode ? '#374151' : 'white',
+                      border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontWeight: 500
+                    }}>
+                    {editMode ? 'Cancel' : '✏️ Edit'}
+                  </button>
+                  <button onClick={() => handleDelete(selected.id)}
+                    style={{ padding: '6px 14px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
+                    🗑 Delete
+                  </button>
+                </>
+              )}
             </div>
 
-            {/* Edit Form */}
-            {editMode && (
+            {/* Edit Form — ADMIN ONLY */}
+            {editMode && isAdmin && (
               <div style={{ background: '#f9fafb', padding: 16, borderRadius: 8, marginBottom: 16, border: '1px solid #e5e7eb' }}>
                 <input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} />
                 <input placeholder="Code" value={code} onChange={e => setCode(e.target.value)} style={inputStyle} />
@@ -289,14 +291,16 @@ export default function CoursesPage() {
               <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                 Assignments
                 <span style={{ background: '#d1fae5', color: '#065f46', fontSize: 10, padding: '1px 8px', borderRadius: 20, fontWeight: 600 }}>One-to-Many</span>
-                <button
-                  onClick={() => setShowAddAssignment(!showAddAssignment)}
-                  style={{ marginLeft: 'auto', padding: '2px 10px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>
-                  + Add
-                </button>
+                {/* ADMIN ONLY — Add Assignment button */}
+                {isAdmin && (
+                  <button onClick={() => setShowAddAssignment(!showAddAssignment)}
+                    style={{ marginLeft: 'auto', padding: '2px 10px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>
+                    + Add
+                  </button>
+                )}
               </div>
 
-              {showAddAssignment && (
+              {showAddAssignment && isAdmin && (
                 <div style={{ background: '#f0fdf4', padding: 12, borderRadius: 8, marginBottom: 10, border: '1px solid #6ee7b7' }}>
                   <input placeholder="Assignment title" value={assignmentTitle} onChange={e => setAssignmentTitle(e.target.value)} style={inputStyle} />
                   <input type="date" value={assignmentDueDate} onChange={e => setAssignmentDueDate(e.target.value)} style={inputStyle} />
@@ -318,16 +322,16 @@ export default function CoursesPage() {
                   <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '0.5px solid #e5e7eb', fontSize: 14 }}>
                     <span style={{ flex: 1, fontWeight: 500 }}>{a.title}</span>
                     <span style={{ fontSize: 12, color: '#6b7280' }}>Due: {a.dueDate.split('T')[0]}</span>
-                    <button
-                      onClick={() => handleDeleteAssignment(a.id)}
-                      style={{ padding: '2px 8px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: 4, fontSize: 12, cursor: 'pointer' }}>
-                      🗑
-                    </button>
+                    {/* ADMIN ONLY — Delete assignment */}
+                    {isAdmin && (
+                      <button onClick={() => handleDeleteAssignment(a.id)}
+                        style={{ padding: '2px 8px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: 4, fontSize: 12, cursor: 'pointer' }}>
+                        🗑
+                      </button>
+                    )}
                   </div>
                 )) : (
-                  <span style={{ fontSize: 13, color: '#6b7280' }}>
-                    No assignments yet — click + Add to create one
-                  </span>
+                  <span style={{ fontSize: 13, color: '#6b7280' }}>No assignments yet</span>
                 )}
               </div>
             </div>
@@ -338,7 +342,7 @@ export default function CoursesPage() {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 300, color: '#6b7280', fontSize: 14, background: 'white', borderRadius: 10, border: '0.5px solid #e5e7eb', gap: 8 }}>
             <div style={{ fontSize: 32 }}>📚</div>
             <div>Select a course to view details</div>
-            <div style={{ fontSize: 12 }}>or click + Add to create a new course</div>
+            {isAdmin && <div style={{ fontSize: 12 }}>or click + Add to create a new course</div>}
           </div>
         )}
       </div>

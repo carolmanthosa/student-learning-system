@@ -10,6 +10,6 @@ import { Enrollment } from '../enrollments/entities/enrollment.entity';
   imports: [TypeOrmModule.forFeature([Student, Course, Enrollment])],
   controllers: [StudentsController],
   providers: [StudentsService],
-  exports: [StudentsService],
+  exports: [StudentsService, TypeOrmModule],
 })
 export class StudentsModule {}

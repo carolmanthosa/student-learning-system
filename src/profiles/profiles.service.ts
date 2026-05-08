@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Profile } from './entities/profile.entity';
@@ -16,9 +21,26 @@ export class ProfilesService {
     private studentRepo: Repository<Student>,
   ) {}
 
-  async create(data: CreateProfileDto): Promise<Profile> {
+  // ---------------- CREATE ----------------
+  async create(data: CreateProfileDto, user: any): Promise<Profile> {
+    const isAdmin = user.role === 'admin';
+
+    // 👇 student can ONLY create their own profile
+    if (!isAdmin) {
+      data.studentId = user.id;
+    }
+
     const student = await this.studentRepo.findOneBy({ id: data.studentId });
-    if (!student) throw new NotFoundException(`Student #${data.studentId} not found`);
+    if (!student) throw new NotFoundException('Student not found');
+
+    // ❌ prevent duplicate profile
+    const existing = await this.profileRepo.findOne({
+      where: { student: { id: data.studentId } },
+    });
+
+    if (existing) {
+      throw new ConflictException('Profile already exists');
+    }
 
     const profile = this.profileRepo.create({
       bio: data.bio,
@@ -29,31 +51,79 @@ export class ProfilesService {
     return this.profileRepo.save(profile);
   }
 
-  async findAll(): Promise<Profile[]> {
-    return this.profileRepo.find({ relations: ['student'] });
+  // ---------------- FIND ALL ----------------
+  async findAll(user: any): Promise<Profile[]> {
+    const isAdmin = user.role === 'admin';
+
+    if (isAdmin) {
+      return this.profileRepo.find({ relations: ['student'] });
+    }
+
+    // student sees ONLY own profile
+    return this.profileRepo.find({
+      where: { student: { id: user.id } },
+      relations: ['student'],
+    });
   }
 
-  async findOne(id: string): Promise<Profile> {
+  // ---------------- FIND ONE ----------------
+  async findOne(id: string, user: any): Promise<Profile> {
     const profile = await this.profileRepo.findOne({
       where: { id },
       relations: ['student'],
     });
-    if (!profile) throw new NotFoundException(`Profile #${id} not found`);
+
+    if (!profile) throw new NotFoundException('Profile not found');
+
+    const isAdmin = user.role === 'admin';
+    const isOwner = profile.student.id === user.id;
+
+    if (!isAdmin && !isOwner) {
+      throw new ForbiddenException('Not allowed');
+    }
+
     return profile;
   }
 
-  async update(id: string, data: UpdateProfileDto): Promise<Profile> {
-    await this.findOne(id);
-    await this.profileRepo.update(id, {
-      bio: data.bio,
-      avatarUrl: data.avatarUrl,
+  // ---------------- UPDATE ----------------
+  async update(id: string, data: UpdateProfileDto, user: any): Promise<Profile> {
+    const profile = await this.profileRepo.findOne({
+      where: { id },
+      relations: ['student'],
     });
-    return this.findOne(id);
+
+    if (!profile) throw new NotFoundException('Profile not found');
+
+    const isAdmin = user.role === 'admin';
+    const isOwner = profile.student.id === user.id;
+
+    if (!isAdmin && !isOwner) {
+      throw new ForbiddenException('Not allowed');
+    }
+
+    await this.profileRepo.update(id, data);
+
+    return this.findOne(id, user);
   }
 
-  async remove(id: string): Promise<{ message: string }> {
-    await this.findOne(id);
-    await this.profileRepo.delete(id);
-    return { message: `Profile #${id} deleted successfully` };
+  // ---------------- DELETE ----------------
+  async remove(id: string, user: any): Promise<{ message: string }> {
+    const profile = await this.profileRepo.findOne({
+      where: { id },
+      relations: ['student'],
+    });
+
+    if (!profile) throw new NotFoundException('Profile not found');
+
+    const isAdmin = user.role === 'admin';
+    const isOwner = profile.student.id === user.id;
+
+    if (!isAdmin && !isOwner) {
+      throw new ForbiddenException('Not allowed');
+    }
+
+    await this.profileRepo.remove(profile);
+
+    return { message: 'Profile deleted successfully' };
   }
 }
