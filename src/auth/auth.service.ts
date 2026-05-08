@@ -1,8 +1,15 @@
-import { Injectable, NotFoundException, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
+
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+
 import { Student } from '../students/entities/student.entity';
 import { Role } from './roles.enum';
 
@@ -14,32 +21,69 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  // ── Register (students only) ───────────────────────────────
-  async register(name: string, email: string, password: string) {
-    const existing = await this.studentRepo.findOne({ where: { email } });
-    if (existing) throw new ConflictException('Email already in use');
+  // Register
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    role: Role,
+  ) {
+    const existing = await this.studentRepo.findOne({
+      where: { email },
+    });
+
+    if (existing) {
+      throw new ConflictException('Email already in use');
+    }
 
     const hashed = await bcrypt.hash(password, 10);
+
     const student = this.studentRepo.create({
       name,
       email,
       password: hashed,
-      role: Role.STUDENT,
+      role,
     });
 
     await this.studentRepo.save(student);
-    return { message: 'Account created successfully' };
+
+    return {
+      message: 'Account created successfully',
+      user: {
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        role: student.role,
+      },
+    };
   }
 
-  // ── Login ──────────────────────────────────────────────────
+  // Login
   async login(email: string, password: string) {
-    const user = await this.studentRepo.findOne({ where: { email } });
-    if (!user) throw new NotFoundException('User not found');
+    const user = await this.studentRepo.findOne({
+      where: { email },
+    });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) throw new UnauthorizedException('Invalid credentials');
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
 
-    const payload = { sub: user.id, email: user.email, role: user.role };
+    const isMatch = await bcrypt.compare(
+      password,
+      user.password,
+    );
+
+    if (!isMatch) {
+      throw new UnauthorizedException(
+        'Invalid credentials',
+      );
+    }
+
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
 
     return {
       access_token: this.jwtService.sign(payload),
