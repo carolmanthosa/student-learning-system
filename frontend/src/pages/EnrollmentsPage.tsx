@@ -112,10 +112,13 @@ export default function EnrollmentsPage() {
     fetchEnrollments()
   }
 
-  const handleUnenroll = async (studentId: string, courseId: string) => {
+  const handleUnenroll = async (studentId: string | undefined, courseId: string | undefined) => {
+    // ✅ FIX: Fallback to currentUser?.id when e.student is undefined (non-admin view)
+    const resolvedStudentId = studentId ?? currentUser?.id
+    if (!resolvedStudentId || !courseId) return flash('Unable to identify enrollment', 'error')
     if (!confirm('Remove this enrollment?')) return
     try {
-      await api.delete(`/enrollments/${studentId}/${courseId}`)
+      await api.delete(`/enrollments/${resolvedStudentId}/${courseId}`)
       flash('Enrollment removed')
       fetchEnrollments()
     } catch {
@@ -327,7 +330,8 @@ export default function EnrollmentsPage() {
 
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                     <button
-                      onClick={() => handleUnenroll(e.student?.id, e.course?.id)}
+                      // ✅ FIX: Fallback to currentUser?.id when e.student is undefined (non-admin view)
+                      onClick={() => handleUnenroll(e.student?.id ?? currentUser?.id, e.course?.id)}
                       style={{
                         padding: '4px 12px', background: '#fee2e2',
                         color: '#b91c1c', border: '1px solid #fca5a5',

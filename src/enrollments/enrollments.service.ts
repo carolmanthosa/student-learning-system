@@ -88,7 +88,8 @@ export class EnrollmentsService {
 
     return this.enrollmentRepo.find({
       where: { student: { id: studentId } },
-      relations: ["course", "course.assignments"],
+      // ✅ FIX: Added "student" relation so e.student.id is available on the frontend
+      relations: ["student", "course", "course.assignments"],
     });
   }
 }

@@ -16,6 +16,12 @@ export class EnrollmentsController {
     return this.enrollmentsService.findAll();
   }
 
+  // ✅ Static routes MUST come before dynamic ones
+  @Get('student/:studentId')
+  getStudentEnrollments(@Param('studentId') studentId: string) {
+    return this.enrollmentsService.getStudentEnrollments(studentId);
+  }
+
   @Post(':studentId/:courseId')
   enroll(
     @Param('studentId') studentId: string,
@@ -30,10 +36,5 @@ export class EnrollmentsController {
     @Param('courseId') courseId: string,
   ) {
     return this.enrollmentsService.unenroll(studentId, courseId);
-  }
-
-  @Get('student/:studentId')
-  getStudentEnrollments(@Param('studentId') studentId: string) {
-    return this.enrollmentsService.getStudentEnrollments(studentId);
   }
 }

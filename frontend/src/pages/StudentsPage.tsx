@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../api/api'
 
 interface Student {
@@ -8,12 +9,6 @@ interface Student {
   role: string
   profile?: { id?: string; bio: string; avatarUrl: string }
   courses?: { id: string; title: string; code: string; assignments?: { id: string; title: string; dueDate: string }[] }[]
-}
-
-interface Course {
-  id: string
-  title: string
-  code: string
 }
 
 const inputStyle = {
@@ -34,8 +29,8 @@ const Spinner = () => (
 )
 
 export default function StudentsPage() {
+  const navigate = useNavigate()
   const [students, setStudents] = useState<Student[]>([])
-  const [courses, setCourses] = useState<Course[]>([])
   const [selected, setSelected] = useState<Student | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [editMode, setEditMode] = useState(false)
@@ -48,7 +43,6 @@ export default function StudentsPage() {
   const [role, setRole] = useState('student')
   const [bio, setBio] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
-  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([])
   const [message, setMessage] = useState('')
   const [msgType, setMsgType] = useState<'success' | 'error'>('success')
 
@@ -68,48 +62,33 @@ export default function StudentsPage() {
     }
   }
 
-  const fetchCourses = async () => {
+  const fetchStudent = async (id: string) => {
+    setLoading(true)
     try {
-      const r = await api.get('/courses')
-      setCourses(r.data)
+      const res = await api.get(`/students/${id}`)
+      const student = res.data
+
+      // ✅ Fetch enrolled courses from enrollments API
+      const enrollmentsRes = await api.get(`/enrollments/student/${id}`)
+      const courses = enrollmentsRes.data.map((e: any) => e.course).filter(Boolean)
+
+      const full = { ...student, courses }
+      setSelected(full)
+      setName(full.name)
+      setEmail(full.email)
+      setRole(full.role || 'student')
+      setBio(full.profile?.bio || '')
+      setAvatarUrl(full.profile?.avatarUrl || '')
+      setEditMode(false)
+      return full
     } catch {
-      flash('Failed to load courses', 'error')
+      flash('Failed to load student details', 'error')
+    } finally {
+      setLoading(false)
     }
   }
-const fetchStudent = async (id: string) => {
-  setLoading(true)
-  try {
-    const res = await api.get(`/students/${id}`)
-    const student = res.data
-    const courses = await Promise.all(
-      (student.enrollments || [])
-        .filter((e: any) => !e.deletedAt)
-        .map(async (e: any) => {
-          try {
-            const courseDetail = await api.get(`/courses/${e.course_id}`)
-            return courseDetail.data
-          } catch {
-            return null
-          }
-        })
-    )
-    const full = { ...student, courses: courses.filter(Boolean) }
-    setSelected(full)
-    setName(full.name)
-    setEmail(full.email)
-    setRole(full.role || 'student')
-    setBio(full.profile?.bio || '')
-    setAvatarUrl(full.profile?.avatarUrl || '')
-    setEditMode(false)
-    return full
-  } catch {
-    flash('Failed to load student details', 'error')
-  } finally {
-    setLoading(false)
-  }
-}
 
-  useEffect(() => { fetchStudents(); fetchCourses() }, [])
+  useEffect(() => { fetchStudents() }, [])
 
   const handleCreate = async () => {
     if (!name || !email || !password) return flash('Name, email and password are required', 'error')
@@ -161,29 +140,12 @@ const fetchStudent = async (id: string) => {
     }
   }
 
-  const handleEnrollMultiple = async () => {
-    if (!selected || selectedCourseIds.length === 0)
-      return flash('Please select at least one course', 'error')
-    try {
-      await Promise.all(
-        selectedCourseIds.map(courseId =>
-          api.post(`/students/${selected.id}/enroll/${courseId}`)
-        )
-      )
-      setSelectedCourseIds([])
-      flash(`Enrolled in ${selectedCourseIds.length} course(s) successfully!`)
-      await fetchStudent(selected.id)
-      fetchStudents()
-    } catch (e: any) {
-      flash(e.response?.data?.message || 'Already enrolled or error occurred', 'error')
-    }
-  }
-
+  // ✅ Unenroll uses the enrollments endpoint
   const handleUnenroll = async (courseId: string) => {
     if (!selected) return
     if (!confirm('Remove this student from the course?')) return
     try {
-      await api.delete(`/students/${selected.id}/unenroll/${courseId}`)
+      await api.delete(`/enrollments/${selected.id}/${courseId}`)
       flash('Unenrolled successfully!')
       await fetchStudent(selected.id)
       fetchStudents()
@@ -192,14 +154,8 @@ const fetchStudent = async (id: string) => {
     }
   }
 
-  const toggleCourse = (id: string) => {
-    setSelectedCourseIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    )
-  }
-
   const initials = (n: string) => n.split(' ').map(x => x[0]).join('').toUpperCase()
-  const unenrolledCourses = courses.filter(c => !selected?.courses?.find(sc => sc.id === c.id))
+
   const allAssignments = selected?.courses?.flatMap(c =>
     (c.assignments || []).map(a => ({ ...a, courseTitle: c.title }))
   ) || []
@@ -217,7 +173,6 @@ const fetchStudent = async (id: string) => {
           </button>
         </div>
 
-        {/* Loading state */}
         {listLoading && <Spinner />}
 
         {!listLoading && students.length === 0 && (
@@ -251,7 +206,6 @@ const fetchStudent = async (id: string) => {
 
       {/* RIGHT - Detail Panel */}
       <div>
-        {/* Flash message */}
         {message && (
           <div style={{
             padding: '10px 14px', borderRadius: 6, marginBottom: 12, fontSize: 13,
@@ -304,7 +258,6 @@ const fetchStudent = async (id: string) => {
           </div>
         )}
 
-        {/* Loading spinner for student detail */}
         {loading && <Spinner />}
 
         {/* Student Detail */}
@@ -353,7 +306,7 @@ const fetchStudent = async (id: string) => {
               </div>
             )}
 
-            {/* Profile - One-to-One */}
+            {/* Profile - 1:1 */}
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                 Profile
@@ -369,64 +322,52 @@ const fetchStudent = async (id: string) => {
               </div>
             </div>
 
-            {/* Enrolled Courses - Many-to-Many */}
+            {/* Enrolled Courses - N:M */}
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                Enrolled Courses
-                <span style={{ background: '#fef3c7', color: '#92400e', fontSize: 10, padding: '1px 8px', borderRadius: 20, fontWeight: 600 }}>N:M Many-to-Many</span>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Enrolled Courses
+                  <span style={{ background: '#fef3c7', color: '#92400e', fontSize: 10, padding: '1px 8px', borderRadius: 20, fontWeight: 600 }}>N:M Many-to-Many</span>
+                </div>
+                {/* ✅ Link to Enrollments page to enroll student in new courses */}
+                <button
+                  onClick={() => navigate('/enrollments')}
+                  style={{ fontSize: 12, padding: '4px 10px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>
+                  + Manage Enrollments
+                </button>
               </div>
+
               <div style={{ background: '#f9fafb', padding: 12, borderRadius: 8 }}>
                 {selected.courses?.length ? (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {selected.courses.map(c => (
-                      <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', background: '#ede9fe', color: '#4f46e5', borderRadius: 20, fontSize: 13 }}>
-                        {c.title} ({c.code})
-                        <button onClick={() => handleUnenroll(c.id)}
-                          title="Unenroll"
-                          style={{ background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: 13, padding: 0 }}>
+                      <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: '#ede9fe', color: '#4f46e5', borderRadius: 20, fontSize: 13 }}>
+                        <span style={{ fontSize: 11, background: '#c4b5fd', color: '#3730a3', padding: '1px 6px', borderRadius: 10, fontWeight: 600 }}>{c.code}</span>
+                        {c.title}
+                        {/* ✅ Unenroll button calls enrollments endpoint */}
+                        <button
+                          onClick={() => handleUnenroll(c.id)}
+                          title="Unenroll from this course"
+                          style={{ background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1, marginLeft: 2 }}>
                           ✕
                         </button>
                       </span>
                     ))}
                   </div>
-                ) : <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 10 }}>Not enrolled in any courses yet</div>}
-
-                {unenrolledCourses.length > 0 && (
-                  <div>
-                    <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8, fontWeight: 500 }}>Select courses to enroll in:</div>
-                    <div style={{ background: 'white', border: '1px solid #d1d5db', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
-                      {unenrolledCourses.map((c, i) => (
-                        <label key={c.id} style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: '10px 12px', cursor: 'pointer', fontSize: 13,
-                          borderBottom: i < unenrolledCourses.length - 1 ? '0.5px solid #e5e7eb' : 'none',
-                          background: selectedCourseIds.includes(String(c.id)) ? '#ede9fe' : 'white',
-                        }}>
-                          <input type="checkbox" checked={selectedCourseIds.includes(String(c.id))} onChange={() => toggleCourse(String(c.id))}
-                            style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#4f46e5' }} />
-                          <span style={{ flex: 1, fontWeight: 500 }}>{c.title}</span>
-                          <span style={{ fontSize: 11, color: '#6b7280', background: '#f3f4f6', padding: '1px 6px', borderRadius: 4 }}>{c.code}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={handleEnrollMultiple}
-                        style={{ padding: '7px 16px', background: selectedCourseIds.length > 0 ? '#059669' : '#d1d5db', color: 'white', border: 'none', borderRadius: 6, fontSize: 13, cursor: selectedCourseIds.length > 0 ? 'pointer' : 'not-allowed', fontWeight: 500 }}>
-                        ✓ Enroll {selectedCourseIds.length > 0 && `(${selectedCourseIds.length})`}
-                      </button>
-                      {selectedCourseIds.length > 0 && (
-                        <button onClick={() => setSelectedCourseIds([])}
-                          style={{ padding: '7px 12px', background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
-                          Clear
-                        </button>
-                      )}
-                    </div>
+                ) : (
+                  <div style={{ fontSize: 13, color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>Not enrolled in any courses yet</span>
+                    <button
+                      onClick={() => navigate('/enrollments')}
+                      style={{ fontSize: 12, padding: '4px 10px', background: '#f3f4f6', color: '#4f46e5', border: '1px solid #a5b4fc', borderRadius: 6, cursor: 'pointer' }}>
+                      Go to Enrollments →
+                    </button>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Assignments - One-to-Many */}
+            {/* Assignments - 1:N */}
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                 Assignments from Enrolled Courses
@@ -442,6 +383,7 @@ const fetchStudent = async (id: string) => {
                 )) : <span style={{ fontSize: 13, color: '#6b7280' }}>No assignments yet</span>}
               </div>
             </div>
+
           </div>
         )}
 
