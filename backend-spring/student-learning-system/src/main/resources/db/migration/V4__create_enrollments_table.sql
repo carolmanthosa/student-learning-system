@@ -1,4 +1,4 @@
-CREATE TABLE enrollments (
+CREATE TABLE IF NOT EXISTS enrollments (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     student_id BIGINT NOT NULL,
     course_id BIGINT NOT NULL,
