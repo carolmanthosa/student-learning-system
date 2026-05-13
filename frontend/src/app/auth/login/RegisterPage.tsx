@@ -20,7 +20,7 @@ function RegisterPage() {
     setError('')
 
     try {
-      await api.post('/auth/register', { name, email, password })
+      await api.post('/auth/register', { name, email, password, role: 'STUDENT' })
       navigate('/login')
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Registration failed.')

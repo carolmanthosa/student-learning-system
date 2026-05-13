@@ -23,9 +23,7 @@ function LoginPage() {
       const res = await api.post('/auth/login', { email, password })
 
       authService.saveSession(res.data.access_token, res.data.user)
-
-      // ✅ ADDED FIX (ROLE-BASED REDIRECT)
-      if (res.data.user.role === 'admin') {
+      if (res.data.user.role === 'ADMIN') {
         navigate('/students')
       } else {
         navigate('/courses')

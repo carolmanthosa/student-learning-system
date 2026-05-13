@@ -5,7 +5,7 @@ export interface AuthUser {
   id: number
   name: string
   email: string
-  role: 'admin' | 'student'
+  role: 'ADMIN' | 'STUDENT'
 }
 
 const authService = {
@@ -35,12 +35,11 @@ const authService = {
   },
 
   isAdmin(): boolean {
-    return this.getUser()?.role === 'admin'
-  },
-
-  isStudent(): boolean {
-    return this.getUser()?.role === 'student'
-  },
+  return this.getUser()?.role === 'ADMIN'
+},
+isStudent(): boolean {
+  return this.getUser()?.role === 'STUDENT'
+},
 
   getCurrentUserId(): number | null {
     return this.getUser()?.id ?? null

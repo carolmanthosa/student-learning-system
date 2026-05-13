@@ -47,8 +47,17 @@ export default function EnrollmentsPage() {
       const res = await api.get('/enrollments')
       setEnrollments(res.data)
     } else {
-      const res = await api.get(`/enrollments/student/${currentUser?.id}`)
-      setEnrollments(res.data)
+      //const res = await api.get(`/enrollments/student/${currentUser?.id}`)
+      //setEnrollments(res.data)
+    const res = await api.get(`/enrollments/student/${currentUser?.id}`)
+const mapped = res.data.map((course: any) => ({
+  id: course.id,
+  enrolledAt: new Date().toISOString(),
+  student: currentUser,
+  course: course
+}))
+setEnrollments(mapped)
+
     }
   }
 
