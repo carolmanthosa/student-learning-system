@@ -97,7 +97,7 @@ export default function StudentsPage() {
       const res = await api.post('/students', { name, email, password, role })
       if (bio) await api.post('/profiles', { bio, avatarUrl, studentId: res.data.id })
       flash('Student created successfully!')
-      setName(''); setEmail(''); setPassword(''); setBio(''); setAvatarUrl(''); setRole('student')
+      setName(''); setEmail(''); setPassword(''); setBio(''); setAvatarUrl(''); setRole('STUDENT')
       setShowAdd(false)
       fetchStudents()
     } catch (e: any) {
@@ -167,7 +167,7 @@ export default function StudentsPage() {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <span style={{ fontWeight: 600, fontSize: 15 }}>Students ({students.length})</span>
-          <button onClick={() => { setShowAdd(true); setSelected(null); setName(''); setEmail(''); setPassword(''); setBio(''); setAvatarUrl(''); setRole('student') }}
+          <button onClick={() => { setShowAdd(true); setSelected(null); setName(''); setEmail(''); setPassword(''); setBio(''); setAvatarUrl(''); setRole('STUDENT') }}
             style={{ padding: '4px 12px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>
             + Add
           </button>
@@ -235,8 +235,8 @@ export default function StudentsPage() {
 
             <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 4 }}>Role</label>
             <select value={role} onChange={e => setRole(e.target.value)} style={inputStyle}>
-              <option value="student">Student</option>
-              <option value="admin">Admin</option>
+              <option value="STUDENT">Student</option>
+              <option value="ADMIN">Admin</option>
             </select>
 
             <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 4 }}>Bio (optional)</label>
@@ -294,8 +294,8 @@ export default function StudentsPage() {
                 <input placeholder="Name" value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
                 <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
                 <select value={role} onChange={e => setRole(e.target.value)} style={inputStyle}>
-                  <option value="student">Student</option>
-                  <option value="admin">Admin</option>
+                  <option value="STUDENT">Student</option>
+                  <option value="ADMIN">Admin</option>
                 </select>
                 <input placeholder="Bio" value={bio} onChange={e => setBio(e.target.value)} style={inputStyle} />
                 <input placeholder="Avatar URL" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} style={inputStyle} />

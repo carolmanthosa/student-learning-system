@@ -118,9 +118,9 @@ export default function AssignmentsPage() {
             }}>
             <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 2 }}>{a.title}</div>
             <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Due: {a.dueDate.split('T')[0]}</div>
-            {a.course && (
+            {(a as any).courseTitle && (
               <span style={{ fontSize: 11, padding: '2px 8px', background: '#d1fae5', color: '#065f46', borderRadius: 20 }}>
-                {a.course.title}
+                {(a as any).courseTitle}
               </span>
             )}
           </div>
@@ -214,7 +214,7 @@ export default function AssignmentsPage() {
               </div>
               <div style={{ background: '#f9fafb', padding: 12, borderRadius: 8 }}>
                 <span style={{ padding: '3px 12px', background: '#d1fae5', color: '#065f46', borderRadius: 20, fontSize: 13 }}>
-                  {selected.course?.title || '—'}
+                 {(selected as any).courseTitle || '—'}
                 </span>
               </div>
             </div>
