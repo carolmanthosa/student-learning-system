@@ -1,7 +1,10 @@
 package com.sls.student_learning_system.service;
 
 import com.sls.student_learning_system.dto.request.CourseRequest;
+import com.sls.student_learning_system.dto.response.AssignmentResponse;
 import com.sls.student_learning_system.dto.response.CourseResponse;
+import com.sls.student_learning_system.dto.response.EnrollmentResponse;
+import com.sls.student_learning_system.dto.response.UserResponse;
 import com.sls.student_learning_system.entity.Course;
 import com.sls.student_learning_system.exception.ResourceNotFoundException;
 import com.sls.student_learning_system.repository.CourseRepository;
@@ -20,24 +23,21 @@ public class CourseService {
 
     private final CourseRepository courseRepository;
 
-    // Get all courses
+    @Transactional(readOnly = true)
     public List<CourseResponse> getAllCourses() {
         try {
-            log.info("Fetching all courses");
             return courseRepository.findAllByDeletedFalse()
                     .stream()
                     .map(this::mapToCourseResponse)
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            log.error("Error fetching courses: {}", e.getMessage());
             throw new RuntimeException("Failed to fetch courses");
         }
     }
 
-    // Get course by ID
+    @Transactional(readOnly = true)
     public CourseResponse getCourseById(Long id) {
         try {
-            log.info("Fetching course with id: {}", id);
             Course course = courseRepository.findByIdAndDeletedFalse(id)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Course not found with id: " + id));
@@ -45,84 +45,94 @@ public class CourseService {
         } catch (ResourceNotFoundException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Error fetching course {}: {}", id, e.getMessage());
             throw new RuntimeException("Failed to fetch course");
         }
     }
 
-    // Create course
     @Transactional
     public CourseResponse createCourse(CourseRequest request) {
         try {
-            log.info("Creating new course: {}", request.getTitle());
             Course course = Course.builder()
                     .title(request.getTitle())
+                    .code(request.getCode())
                     .description(request.getDescription())
                     .instructor(request.getInstructor())
                     .deleted(false)
                     .build();
-
             courseRepository.save(course);
-            log.info("Course created successfully with id: {}", course.getId());
             return mapToCourseResponse(course);
         } catch (Exception e) {
-            log.error("Error creating course: {}", e.getMessage());
             throw new RuntimeException("Failed to create course");
         }
     }
 
-    // Update course
     @Transactional
     public CourseResponse updateCourse(Long id, CourseRequest request) {
         try {
-            log.info("Updating course with id: {}", id);
             Course course = courseRepository.findByIdAndDeletedFalse(id)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Course not found with id: " + id));
-
             course.setTitle(request.getTitle());
+            course.setCode(request.getCode());
             course.setDescription(request.getDescription());
             course.setInstructor(request.getInstructor());
-
             courseRepository.save(course);
-            log.info("Course {} updated successfully", id);
             return mapToCourseResponse(course);
         } catch (ResourceNotFoundException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Error updating course {}: {}", id, e.getMessage());
             throw new RuntimeException("Failed to update course");
         }
     }
 
-    // Soft delete course
     @Transactional
     public String deleteCourse(Long id) {
         try {
-            log.info("Soft deleting course with id: {}", id);
             Course course = courseRepository.findByIdAndDeletedFalse(id)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Course not found with id: " + id));
-
             course.setDeleted(true);
             courseRepository.save(course);
-            log.info("Course {} soft deleted successfully", id);
             return "Course deleted successfully";
         } catch (ResourceNotFoundException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Error deleting course {}: {}", id, e.getMessage());
             throw new RuntimeException("Failed to delete course");
         }
     }
 
-    // Mapper
     private CourseResponse mapToCourseResponse(Course course) {
+        List<AssignmentResponse> assignments = course.getAssignments() == null ? List.of() :
+            course.getAssignments().stream()
+                .map(a -> AssignmentResponse.builder()
+                    .id(a.getId())
+                    .title(a.getTitle())
+                    .dueDate(a.getDueDate() != null ?
+                        a.getDueDate().toLocalDate().toString() : null)
+                    .build())
+                .collect(Collectors.toList());
+
+        List<EnrollmentResponse> enrollments = course.getEnrollments() == null ? List.of() :
+            course.getEnrollments().stream()
+                .map(e -> EnrollmentResponse.builder()
+                    .id(e.getId())
+                    .student(UserResponse.builder()
+                        .id(e.getStudent().getId())
+                        .name(e.getStudent().getName())
+                        .email(e.getStudent().getEmail())
+                        .build())
+                    .enrolledAt(e.getCreatedAt())
+                    .build())
+                .collect(Collectors.toList());
+
         return CourseResponse.builder()
                 .id(course.getId())
                 .title(course.getTitle())
+                .code(course.getCode())
                 .description(course.getDescription())
                 .instructor(course.getInstructor())
+                .assignments(assignments)
+                .enrollments(enrollments)
                 .createdAt(course.getCreatedAt())
                 .updatedAt(course.getUpdatedAt())
                 .build();

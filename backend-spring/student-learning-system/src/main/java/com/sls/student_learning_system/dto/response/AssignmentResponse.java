@@ -24,8 +24,8 @@ public class AssignmentResponse {
     @Schema(example = "Complete the array exercises")
     private String description;
 
-    @Schema(example = "2026-06-30T23:59:00")
-    private LocalDateTime dueDate;
+    @Schema(example = "2026-06-30")
+    private String dueDate;
 
     @Schema(example = "1")
     private Long courseId;

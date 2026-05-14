@@ -1,5 +1,6 @@
 package com.sls.student_learning_system.service;
 
+import com.sls.student_learning_system.dto.response.AssignmentResponse;
 import com.sls.student_learning_system.dto.response.CourseResponse;
 import com.sls.student_learning_system.dto.response.UserResponse;
 import com.sls.student_learning_system.entity.Course;
@@ -15,7 +16,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,21 +30,38 @@ public class EnrollmentService {
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
 
-    // Get all enrollments
-    public List<UserResponse> getAllEnrollments() {
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getAllEnrollments() {
         try {
             log.info("Fetching all enrollments");
             return enrollmentRepository.findAll()
                     .stream()
-                    .map(enrollment -> mapToUserResponse(enrollment.getStudent()))
+                    .map(enrollment -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("id", enrollment.getId());
+                        map.put("enrolledAt", enrollment.getCreatedAt() != null ?
+                                enrollment.getCreatedAt().toString() : null);
+                        Map<String, Object> student = new HashMap<>();
+                        student.put("id", enrollment.getStudent().getId());
+                        student.put("name", enrollment.getStudent().getName());
+                        student.put("email", enrollment.getStudent().getEmail());
+                        map.put("student", student);
+                        Map<String, Object> course = new HashMap<>();
+                        course.put("id", enrollment.getCourse().getId());
+                        course.put("title", enrollment.getCourse().getTitle());
+                        course.put("code", enrollment.getCourse().getCode() != null ?
+                                enrollment.getCourse().getCode() : "");
+                        map.put("course", course);
+                        return map;
+                    })
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Error fetching enrollments: {}", e.getMessage());
-            throw new RuntimeException("Failed to fetch enrollments");
+            throw new RuntimeException("Failed to fetch enrollments: " + e.getMessage());
         }
     }
 
-    // Get enrollments by student ID
+    @Transactional(readOnly = true)
     public List<CourseResponse> getStudentEnrollments(Long studentId) {
         try {
             log.info("Fetching enrollments for student: {}", studentId);
@@ -61,7 +81,6 @@ public class EnrollmentService {
         }
     }
 
-    // Enroll student in course
     @Transactional
     public String enroll(Long studentId, Long courseId) {
         try {
@@ -96,7 +115,6 @@ public class EnrollmentService {
         }
     }
 
-    // Unenroll student from course
     @Transactional
     public String unenroll(Long studentId, Long courseId) {
         try {
@@ -119,7 +137,6 @@ public class EnrollmentService {
         }
     }
 
-    // Mappers
     private UserResponse mapToUserResponse(User user) {
         return UserResponse.builder()
                 .id(user.getId())
@@ -132,11 +149,23 @@ public class EnrollmentService {
     }
 
     private CourseResponse mapToCourseResponse(Course course) {
+        List<AssignmentResponse> assignments = course.getAssignments() == null ? List.of() :
+            course.getAssignments().stream()
+                .map(a -> AssignmentResponse.builder()
+                    .id(a.getId())
+                    .title(a.getTitle())
+                    .dueDate(a.getDueDate() != null ?
+                        a.getDueDate().toLocalDate().toString() : null)
+                    .build())
+                .collect(Collectors.toList());
+
         return CourseResponse.builder()
                 .id(course.getId())
                 .title(course.getTitle())
+                .code(course.getCode())
                 .description(course.getDescription())
                 .instructor(course.getInstructor())
+                .assignments(assignments)
                 .createdAt(course.getCreatedAt())
                 .updatedAt(course.getUpdatedAt())
                 .build();

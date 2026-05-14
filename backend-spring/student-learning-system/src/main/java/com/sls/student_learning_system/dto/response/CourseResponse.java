@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -21,11 +22,17 @@ public class CourseResponse {
     @Schema(example = "Introduction to Java")
     private String title;
 
+    @Schema(example = "CS101")
+    private String code;
+
     @Schema(example = "Learn Java from scratch")
     private String description;
 
     @Schema(example = "Mr Dlamini")
     private String instructor;
+
+    private List<AssignmentResponse> assignments;  // ← add this
+    private List<EnrollmentResponse> enrollments;  // ← add this
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

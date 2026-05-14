@@ -18,10 +18,21 @@ public class AssignmentRequest {
     @Schema(example = "Complete the array exercises")
     private String description;
 
-    @Schema(example = "2026-06-30T23:59:00")
-    private LocalDateTime dueDate;
+    @Schema(example = "2026-06-30")
+    private String dueDate;
 
     @NotNull(message = "Course ID is required")
     @Schema(example = "1")
-    private Long courseId;
+    private Object courseId;
+
+    public LocalDateTime getParsedDueDate() {
+        if (dueDate == null || dueDate.isEmpty()) return null;
+        if (dueDate.contains("T")) return LocalDateTime.parse(dueDate);
+        return LocalDateTime.parse(dueDate + "T00:00:00");
+    }
+
+    public Long getParsedCourseId() {
+        if (courseId == null) return null;
+        return Long.parseLong(courseId.toString());
+    }
 }

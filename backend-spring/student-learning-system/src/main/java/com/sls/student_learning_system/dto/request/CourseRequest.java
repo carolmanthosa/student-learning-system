@@ -12,6 +12,9 @@ public class CourseRequest {
     @Schema(example = "Introduction to Java")
     private String title;
 
+    @Schema(example = "CS101")
+    private String code;
+
     @Schema(example = "Learn Java from scratch")
     private String description;
 

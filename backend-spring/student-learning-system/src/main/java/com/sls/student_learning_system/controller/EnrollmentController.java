@@ -1,7 +1,6 @@
 package com.sls.student_learning_system.controller;
 
 import com.sls.student_learning_system.dto.response.CourseResponse;
-import com.sls.student_learning_system.dto.response.UserResponse;
 import com.sls.student_learning_system.service.EnrollmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -13,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/enrollments")
@@ -27,7 +27,7 @@ public class EnrollmentController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get all enrollments — ADMIN only")
     @ApiResponse(responseCode = "200", description = "Enrollments retrieved successfully")
-    public ResponseEntity<List<UserResponse>> getAllEnrollments() {
+    public ResponseEntity<List<Map<String, Object>>> getAllEnrollments() {
         return ResponseEntity.ok(enrollmentService.getAllEnrollments());
     }
 
@@ -42,8 +42,8 @@ public class EnrollmentController {
     }
 
     @PostMapping("/{studentId}/{courseId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STUDENT')")
-    @Operation(summary = "Enroll student in a course")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Enroll student in a course — ADMIN only")
     @ApiResponse(responseCode = "200", description = "Student enrolled successfully")
     @ApiResponse(responseCode = "404", description = "Student or course not found")
     @ApiResponse(responseCode = "409", description = "Student already enrolled")
@@ -54,8 +54,8 @@ public class EnrollmentController {
     }
 
     @DeleteMapping("/{studentId}/{courseId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STUDENT')")
-    @Operation(summary = "Unenroll student from a course")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Unenroll student from a course — ADMIN only")
     @ApiResponse(responseCode = "200", description = "Student unenrolled successfully")
     @ApiResponse(responseCode = "404", description = "Enrollment not found")
     public ResponseEntity<String> unenroll(
